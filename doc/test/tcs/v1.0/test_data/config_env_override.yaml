@@ -1,0 +1,15 @@
+# 环境变量覆盖配置样本
+
+proxy:
+  host: 127.0.0.1
+  port: 8080
+  timeout: 30
+
+log:
+  level: info
+
+providers:
+  openai:
+    type: openai
+    api_key: sk-test123456789
+    base_url: https://api.openai.com

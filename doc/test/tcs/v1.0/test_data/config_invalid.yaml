@@ -1,0 +1,28 @@
+# 格式错误的配置文件
+proxy:
+  host: 127.0.0.1
+  port: 8080
+  timeout: 30
+  max_connections: 100
+
+log:
+  level: info
+  file: /var/log/lpg.log
+
+providers:
+  openai:
+    type: openai
+    api_key: sk-test123456789
+    base_url: https://api.openai.com
+    timeout: 60
+
+rules:
+  enabled: true
+  path: /etc/lpg/rules
+
+audit:
+  enabled: true
+  log_file: /var/log/lpg/audit.log
+
+# 缺少闭合括号
+invalid_yaml: {

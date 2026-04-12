@@ -1,0 +1,2 @@
+[console_scripts]
+lpg = lpg.cli.main:cli
