@@ -57,24 +57,60 @@ class ServiceFacade:
         """停止代理服务."""
         if self._proxy_server:
             self._proxy_server.stop(force=force)
+        else:
+            # 跨进程停止：从 PID 文件读取并终止进程
+            from lpg.core.proxy.server import ProxyServer
+            ProxyServer._stop_by_pid_file()
 
     def is_running(self) -> bool:
         """检查服务是否运行."""
-        return (
-            self._proxy_server is not None and self._proxy_server.is_running()
-        )
+        # 首先检查当前进程的代理服务器
+        if self._proxy_server is not None and self._proxy_server.is_running():
+            return True
+        # 跨进程检测：检查 PID 文件中的进程是否存在
+        from lpg.core.proxy.server import ProxyServer
+        return ProxyServer._check_process_running(self)
 
     def get_status(self) -> Dict[str, Any]:
         """获取服务状态."""
+        # 检查服务是否运行（支持跨进程检测）
+        is_running = self.is_running()
+
+        # 获取 PID 和运行信息
+        pid = None
+        uptime = 0
+        host = self._config_service.get("proxy.host", "127.0.0.1")
+        port = self._config_service.get("proxy.port", 8080)
+        stats = {}
+
+        if self._proxy_server:
+            # 当前进程有代理服务器实例
+            pid = self._proxy_server.pid
+            uptime = self._proxy_server.uptime
+            stats = self._proxy_server.stats
+        elif is_running:
+            # 跨进程检测：从 PID 文件读取信息
+            from lpg.core.proxy.server import PID_FILE_PATH
+            try:
+                if PID_FILE_PATH.exists():
+                    with open(PID_FILE_PATH, "r") as f:
+                        lines = f.read().strip().split("\n")
+                        if len(lines) >= 3:
+                            pid = int(lines[0])
+                            host = lines[1]
+                            port = int(lines[2])
+            except Exception:
+                pass
+
         return {
-            "running": self.is_running(),
-            "host": self._config_service.get("proxy.host", "127.0.0.1"),
-            "port": self._config_service.get("proxy.port", 8080),
-            "pid": self._proxy_server.pid if self._proxy_server else None,
-            "uptime": self._proxy_server.uptime if self._proxy_server else 0,
+            "running": is_running,
+            "host": host,
+            "port": port,
+            "pid": pid,
+            "uptime": uptime,
             "rules_count": self._rule_manager.count(),
             "keys_count": self._key_manager.count(),
-            "stats": self._proxy_server.stats if self._proxy_server else {},
+            "stats": stats,
         }
 
     # ========== Key 管理 ==========

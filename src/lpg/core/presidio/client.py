@@ -4,6 +4,8 @@ import aiohttp
 from typing import List, Dict, Any, Optional
 import logging
 
+from lpg.core.presidio.recognizers import ChineseRecognizers
+
 logger = logging.getLogger(__name__)
 
 
@@ -23,7 +25,8 @@ class PresidioClient:
             config_service: 配置服务
         """
         self._config = config_service
-        self._base_url = config_service.get("presidio.endpoint", "http://localhost:5001")
+        self._analyzer_url = config_service.get("presidio.analyzer_endpoint", "http://localhost:5001")
+        self._anonymizer_url = config_service.get("presidio.anonymizer_endpoint", "http://localhost:5002")
         self._language = config_service.get("presidio.language", "zh")
         self._timeout = aiohttp.ClientTimeout(total=30)
 
@@ -45,16 +48,20 @@ class PresidioClient:
         Returns:
             检测结果列表
         """
-        url = f"{self._base_url}/analyze"
+        url = f"{self._analyzer_url}/analyze"
+        lang = language or self._language
 
         payload = {
             "text": text,
-            "language": language or self._language,
+            "language": "en",  # 使用 en 语言以支持 ad_hoc_recognizers
             "score_threshold": score_threshold,
         }
 
         if entities:
             payload["entities"] = entities
+
+        # 添加中文识别器（支持中文或英文文本）
+        payload["ad_hoc_recognizers"] = ChineseRecognizers.get_recognizers()
 
         try:
             async with aiohttp.ClientSession(timeout=self._timeout) as session:
@@ -62,11 +69,13 @@ class PresidioClient:
                     if resp.status == 200:
                         return await resp.json()
                     else:
-                        logger.error(f"Analyzer failed: {resp.status}")
-                        return []
+                        # 如果 Presidio 调用失败，使用本地中文识别器作为降级
+                        logger.warning(f"Presidio analyze failed: {resp.status}, using local recognizers")
+                        return ChineseRecognizers.analyze_with_chinese_recognizers(text)
         except Exception as e:
-            logger.error(f"Analyzer error: {e}")
-            return []
+            logger.error(f"Analyzer error: {e}, using local recognizers")
+            # 使用本地中文识别器作为降级方案
+            return ChineseRecognizers.analyze_with_chinese_recognizers(text)
 
     async def anonymize(
         self,
@@ -84,7 +93,7 @@ class PresidioClient:
         Returns:
             脱敏后的文本
         """
-        url = f"{self._base_url}/anonymize"
+        url = f"{self._anonymizer_url}/anonymize"
 
         default_operators = self._get_default_operators()
         if operators:
@@ -144,7 +153,18 @@ class PresidioClient:
         """健康检查."""
         try:
             async with aiohttp.ClientSession(timeout=self._timeout) as session:
-                async with session.get(f"{self._base_url}/health") as resp:
-                    return resp.status == 200
+                analyzer_ok = False
+                anonymizer_ok = False
+                try:
+                    async with session.get(f"{self._analyzer_url}/health") as resp:
+                        analyzer_ok = resp.status == 200
+                except Exception:
+                    pass
+                try:
+                    async with session.get(f"{self._anonymizer_url}/health") as resp:
+                        anonymizer_ok = resp.status == 200
+                except Exception:
+                    pass
+                return analyzer_ok and anonymizer_ok
         except Exception:
             return False

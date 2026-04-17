@@ -1,0 +1,64 @@
+# 知识问答系统配置
+
+# OpenAI 兼容 API 配置
+api:
+  # API 基础 URL，例如：
+  # - OpenAI: https://api.openai.com/v1
+  # - 阿里云百炼: https://dashscope.aliyuncs.com/compatible-mode/v1
+  # - LPG 代理: http://127.0.0.1:8080
+  base_url: "http://127.0.0.1:8080"
+  
+  # API Key
+  # - OpenAI: sk-...
+  # - 阿里云百炼: sk-...
+  # - LPG 虚拟Key: sk-virtual-...
+  api_key: "sk-virtual-a8f8cacd047e54f84f84a39050082b7d53b44b78c2cfc78c"
+  
+  # 模型名称
+  # - OpenAI: gpt-3.5-turbo, gpt-4
+  # - 阿里云百炼: qwen3.6-plus, qwen-max
+  model: "qwen3.6-plus"
+  
+  # 请求超时（秒）
+  timeout: 30
+
+# 对话配置
+chat:
+  # 系统提示词
+  system_prompt: |
+    你是一个专业的知识问答助手。请根据用户的问题提供准确、简洁的回答。
+    如果不确定答案，请诚实地说"我不知道"。
+  
+  # 最大历史消息数
+  max_history: 10
+  
+  # 记忆上下文轮数（从 memory.md 加载的最近对话轮数）
+  memory_context: 3
+  
+  # 温度参数（0-2，越高越随机）
+  temperature: 0.7
+  
+  # 最大生成token数
+  max_tokens: 2000
+
+# 界面配置
+ui:
+  # 欢迎语
+  welcome_message: "欢迎使用知识问答系统！输入您的问题，或输入 'quit' 退出。"
+  
+  # 提示符
+  prompt: "👤 你: "
+  
+  # 助手标识
+  assistant_prefix: "🤖 助手: "
+  
+  # 分隔线
+  separator: "──────────────────────────────────────────────────"
+
+# 记忆配置
+memory:
+  # 记忆文件路径
+  file: "memory.md"
+  
+  # 最大行数限制（超过则自动遗忘）
+  max_lines: 1000

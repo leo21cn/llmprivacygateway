@@ -94,7 +94,7 @@ class RequestHandler:
 
         if is_stream:
             return await self._handle_stream_response(
-                target_url, headers, request_data, start_time, detection_results
+                target_url, headers, request_data, start_time, detection_results, request
             )
         else:
             return await self._handle_normal_response(
@@ -170,6 +170,7 @@ class RequestHandler:
         data: Dict,
         start_time: float,
         detections: List,
+        request: web.Request,
     ) -> web.StreamResponse:
         """处理流式响应（SSE）."""
         response = web.StreamResponse()
@@ -178,9 +179,12 @@ class RequestHandler:
 
         async with aiohttp.ClientSession() as session:
             async with session.post(url, headers=headers, json=data) as resp:
-                await response.prepare(resp)
+                # 设置响应状态码
+                response.set_status(resp.status)
+                await response.prepare(request)
                 async for chunk in resp.content:
                     await response.write(chunk)
+                await response.write_eof()
 
         self._audit.log_request(
             url=url,

@@ -19,8 +19,9 @@ rules:
     type: regex
     entity_type: CN_PHONE_NUMBER
     pattern: '1[3-9]\d{9}'
-    strategy: replace
-    replacement: "<PHONE>"
+    strategy: mask
+    masking_char: "*"
+    chars_to_mask: 4
     description: 检测中国大陆手机号码
     enabled: true
 

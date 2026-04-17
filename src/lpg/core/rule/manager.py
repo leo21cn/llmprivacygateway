@@ -63,12 +63,18 @@ class RuleManager:
             with open(file_path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f)
 
+            # 获取文件级别的 category
+            file_category = data.get("category", "uncategorized")
+
             if "rules" in data:
                 for rule in data["rules"]:
                     rule_id = rule.get("id")
                     if rule_id:
                         rule["enabled"] = rule.get("enabled", True)
                         rule["source"] = str(file_path)
+                        # 继承文件级别的 category（如果规则本身没有定义）
+                        if "category" not in rule:
+                            rule["category"] = file_category
                         self._rules[rule_id] = rule
 
             logger.info(f"Loaded {len(data.get('rules', []))} rules from {file_path}")
